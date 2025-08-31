@@ -2,10 +2,18 @@ const express = require('express');
 const pool = require('../config/database');
 const { authenticateToken, requireStudent, requireOwner, requireAdmin } = require('../middleware/auth');
 
-// Initialize Stripe only if API key is provided
+// Initialize Stripe with dummy key if not provided (prevents startup errors)
 let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
-  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+try {
+  if (process.env.STRIPE_SECRET_KEY) {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  } else {
+    // Use dummy key to prevent startup errors
+    stripe = require('stripe')('sk_test_dummy_key_for_startup');
+  }
+} catch (error) {
+  console.log('Stripe initialization failed, payments will be disabled');
+  stripe = null;
 }
 
 const router = express.Router();
@@ -44,9 +52,12 @@ router.post('/create-intent', authenticateToken, requireStudent, async (req, res
       });
     }
 
-    // Check if Stripe is configured
-    if (!stripe) {
-      return res.status(503).json({ error: 'Payment processing is not configured' });
+    // Check if Stripe is properly configured
+    if (!stripe || !process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ 
+        error: 'Payment processing is not configured',
+        message: 'Stripe API key is required for payment processing'
+      });
     }
 
     // Create Stripe payment intent
@@ -86,9 +97,12 @@ router.post('/confirm', authenticateToken, requireStudent, async (req, res) => {
       return res.status(400).json({ error: 'Payment intent ID and booking ID are required' });
     }
 
-    // Check if Stripe is configured
-    if (!stripe) {
-      return res.status(503).json({ error: 'Payment processing is not configured' });
+    // Check if Stripe is properly configured
+    if (!stripe || !process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ 
+        error: 'Payment processing is not configured',
+        message: 'Stripe API key is required for payment processing'
+      });
     }
 
     // Verify payment intent
@@ -256,9 +270,12 @@ router.post('/:id/refund', authenticateToken, requireAdmin, async (req, res) => 
       return res.status(400).json({ error: 'Only completed payments can be refunded' });
     }
 
-    // Check if Stripe is configured
-    if (!stripe) {
-      return res.status(503).json({ error: 'Payment processing is not configured' });
+    // Check if Stripe is properly configured
+    if (!stripe || !process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ 
+        error: 'Payment processing is not configured',
+        message: 'Stripe API key is required for payment processing'
+      });
     }
 
     // Process Stripe refund
@@ -302,9 +319,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   let event;
 
   try {
-    // Check if Stripe is configured
-    if (!stripe) {
-      return res.status(503).json({ error: 'Payment processing is not configured' });
+    // Check if Stripe is properly configured
+    if (!stripe || !process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ 
+        error: 'Payment processing is not configured',
+        message: 'Stripe API key is required for payment processing'
+      });
     }
 
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
