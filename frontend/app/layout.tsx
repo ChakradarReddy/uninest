@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { Inter, Poppins } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '@/components/providers/AuthProvider';
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import AuthProvider from '@/components/providers/AuthProvider';
+import ThemeProvider from '@/components/providers/ThemeProvider';
 
 const inter = Inter({
   subsets: ['latin'],
