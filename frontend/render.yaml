@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: uninest-frontend
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: .next
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: NEXT_PUBLIC_API_URL
+        value: https://your-backend-service-name.onrender.com
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        value: your_mapbox_token_here
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        value: pk_test_your_stripe_key_here
