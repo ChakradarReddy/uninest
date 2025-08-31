@@ -1,7 +1,12 @@
 const express = require('express');
 const pool = require('../config/database');
 const { authenticateToken, requireStudent, requireOwner, requireAdmin } = require('../middleware/auth');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Initialize Stripe only if API key is provided
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
 
 const router = express.Router();
 
@@ -39,6 +44,11 @@ router.post('/create-intent', authenticateToken, requireStudent, async (req, res
       });
     }
 
+    // Check if Stripe is configured
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment processing is not configured' });
+    }
+
     // Create Stripe payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -74,6 +84,11 @@ router.post('/confirm', authenticateToken, requireStudent, async (req, res) => {
 
     if (!payment_intent_id || !booking_id) {
       return res.status(400).json({ error: 'Payment intent ID and booking ID are required' });
+    }
+
+    // Check if Stripe is configured
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment processing is not configured' });
     }
 
     // Verify payment intent
@@ -241,6 +256,11 @@ router.post('/:id/refund', authenticateToken, requireAdmin, async (req, res) => 
       return res.status(400).json({ error: 'Only completed payments can be refunded' });
     }
 
+    // Check if Stripe is configured
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment processing is not configured' });
+    }
+
     // Process Stripe refund
     const refund = await stripe.refunds.create({
       payment_intent: payment.rows[0].stripe_payment_intent_id,
@@ -282,6 +302,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   let event;
 
   try {
+    // Check if Stripe is configured
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment processing is not configured' });
+    }
+
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
